@@ -5,35 +5,73 @@
 :root{--bg:#fafafa;--card:#fff;--fg:#1a1a1a;--mute:#6b7280;--accent:#2563eb;--line:#e5e7eb}
 @media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1a1d24;--fg:#e8eaed;--mute:#9aa0a6;--accent:#60a5fa;--line:#2a2e37}}
 body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif}
-h1{font-size:20px;margin:0 0 16px}
-main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;overflow:auto}
+.wrap{max-width:1200px;margin:0 auto}
+h1{font-size:20px;margin:0 0 8px}
+.headline{font-size:18px;line-height:1.5;margin:0 0 8px;max-width:62ch}
+.note{color:var(--mute);max-width:70ch;margin:0 0 16px;font-size:13px}
+main{display:grid;grid-auto-flow:dense;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+@media (min-width:760px){.wide{grid-column:span 2}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;overflow:auto;min-width:0}
 .card h2{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--mute)}
-.kpi{font-size:32px;font-weight:700}.kpi small{font-size:14px;color:var(--mute);margin-left:4px}
-table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+.kpi{font-size:32px;font-weight:700}.kpi small{font-size:14px;color:var(--mute);margin-left:4px;font-weight:400}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
 svg text{fill:var(--mute);font-size:10px}
-</style></head><body>
-<h1>OZ Healthcare Claims Dashboard</h1><p style="color:var(--mute);max-width:70ch;margin:0 0 16px">외래(031) 호흡기(J코드) 명세서, 2024-01~2025-12, 연습용 데이터. 진료비는 명세서 1건당 총진료비의 중앙값입니다. 차이를 보여줄 뿐 원인을 설명하지 않으며 연령·성별은 보정하지 않았습니다. 보험료 5분위가 없는 환자는 소득 분석에서 제외했습니다.</p><main id="app"></main>
+.hbar{display:grid;grid-template-columns:auto 1fr auto;gap:10px 12px;align-items:center;font-variant-numeric:tabular-nums}
+.hbar .track{height:16px;background:var(--line);border-radius:4px;overflow:hidden}
+.hbar .fill{height:100%;background:var(--accent);border-radius:4px}
+.hbar .val{text-align:right}
+</style></head><body><div class="wrap">
+<h1>OZ Healthcare Claims Dashboard</h1>
+<p class="headline" id="headline"></p>
+<p class="note">외래(031) 호흡기(J코드) 명세서, 2024-01~2025-12, 연습용 데이터. 진료비는 명세서 1건당 총진료비의 중앙값입니다. 차이를 보여줄 뿐 원인을 설명하지 않으며 연령·성별은 보정하지 않았습니다. 보험료 5분위가 없는 환자는 소득 분석에서 제외했습니다.</p>
+<main id="app"></main></div>
 <script>
 const METRICS = /*__METRICS__*/[];
 const fmt = n => Number(n).toLocaleString("ko-KR");
+
+// round tick values 0..top with top above the maximum
+function ticks(max) {
+  const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  let top = Math.ceil(max / step) * step;
+  if (top <= max) top += step;
+  const out = [];
+  for (let v = 0; v <= top + 1e-9; v += step) out.push(Math.round(v * 100) / 100);
+  return out;
+}
+
+function plot(d, line) {
+  const n = d.values.length;
+  if (!n) return "<p>no data</p>";
+  const suf = d.suffix || "", lab = v => fmt(v) + suf;
+  const t = ticks(Math.max(...d.values, 1)), top = t[t.length - 1];
+  const W = 320, H = 190, pl = Math.max(...t.map(v => lab(v).length)) * 6 + 10, pr = 8, pt = 8, pb = 24;
+  const bw = (W - pl - pr) / n, x = i => pl + i * bw + bw / 2, y = v => H - pb - (v / top) * (H - pb - pt);
+  const grid = t.map(v => `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v === 0 ? 1.5 : 1}"/><text x="${pl - 6}" y="${y(v)}" dy=".35em" text-anchor="end">${lab(v)}</text>`).join("");
+  const body = line
+    ? `<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${d.values.map((v, i) => x(i) + "," + y(v)).join(" ")}"/>` +
+      d.values.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="8" fill="transparent"><title>${d.labels[i]}: ${lab(v)}</title></circle>`).join("")
+    : d.values.map((v, i) => `<rect x="${pl + i * bw + 1}" y="${y(v)}" width="${Math.max(bw - 2, 1)}" height="${y(0) - y(v)}" fill="var(--accent)"><title>${d.labels[i]}: ${lab(v)}</title></rect>`).join("");
+  const step = Math.ceil(n / 6);
+  const xl = d.labels.map((l, i) => i % step ? "" : `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${l}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">${grid}${body}${xl}</svg>`;
+}
+
+function hbar(d) {
+  const suf = d.suffix || "", mx = Math.max(...d.values, 1);
+  return `<div class="hbar">${d.labels.map((l, i) =>
+    `<span>${l}</span><div class="track"><div class="fill" style="width:${d.values[i] / mx * 100}%"></div></div><span class="val">${fmt(d.values[i])}${suf}</span>`).join("")}</div>`;
+}
+
 const R = {
   kpi: d => `<div class="kpi">${fmt(d.value)}<small>${d.unit || ""}</small></div>`,
   table: d => `<table><tr>${d.columns.map(c => `<th>${c}</th>`).join("")}</tr>${d.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</table>`,
   bar: d => plot(d, false),
   line: d => plot(d, true),
+  hbar,
 };
-function plot(d, line) {
-  const W = 320, H = 160, p = 24, n = d.values.length, max = Math.max(...d.values, 1);
-  if (!n) return "<p>no data</p>";
-  const x = i => p + (n < 2 ? 0 : i * (W - 2 * p) / (n - 1)), bw = (W - 2 * p) / n, y = v => H - p - (v / max) * (H - 2 * p);
-  const body = line
-    ? `<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${d.values.map((v, i) => x(i) + "," + y(v)).join(" ")}"/>`
-    : d.values.map((v, i) => `<rect x="${p + i * bw + 1}" y="${y(v)}" width="${Math.max(bw - 2, 1)}" height="${H - p - y(v)}" fill="var(--accent)"><title>${d.labels[i]}: ${fmt(v)}</title></rect>`).join("");
-  const step = Math.ceil(n / 6);
-  const ticks = d.labels.map((l, i) => i % step ? "" : `<text x="${line ? x(i) : p + i * bw + bw / 2}" y="${H - 8}" text-anchor="middle">${l}</text>`).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%"><text x="${p}" y="10">max ${fmt(max)}</text>${body}${ticks}</svg>`;
-}
-document.getElementById("app").innerHTML = METRICS.map(m =>
-  `<section class="card"><h2>${m.question}</h2>${(R[m.chart] || (() => "unknown chart"))(m.data)}</section>`).join("");
+const head = METRICS.find(m => m.chart === "headline");
+if (head) document.getElementById("headline").textContent = head.data.text;
+document.getElementById("app").innerHTML = METRICS.filter(m => m.chart !== "headline").map(m =>
+  `<section class="card${m.wide ? " wide" : ""}"><h2>${m.question}</h2>${(R[m.chart] || (() => "unknown chart"))(m.data)}</section>`).join("");
 </script></body></html>

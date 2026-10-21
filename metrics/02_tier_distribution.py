@@ -2,6 +2,7 @@ from _common import resp, TIERS
 
 QUESTION = "종별 진료비 분포 (원)"
 CHART = "table"
+WIDE = True
 
 
 def run(t):

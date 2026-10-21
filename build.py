@@ -27,7 +27,7 @@ def run_metrics(tables):
         spec = importlib.util.spec_from_file_location(p.stem, p)
         m = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(m)
-        out.append({"id": p.stem, "question": m.QUESTION, "chart": m.CHART, "data": m.run(tables)})
+        out.append({"id": p.stem, "question": m.QUESTION, "chart": m.CHART, "wide": bool(getattr(m, "WIDE", False)), "data": m.run(tables)})
         print("metric", p.stem)
     return out
 
