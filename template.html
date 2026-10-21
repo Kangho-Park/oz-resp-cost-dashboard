@@ -2,24 +2,27 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OZ Healthcare Claims Dashboard</title>
 <style>
-:root{--bg:#fafafa;--card:#fff;--fg:#1a1a1a;--mute:#6b7280;--accent:#2563eb;--line:#e5e7eb}
-@media (prefers-color-scheme:dark){:root{--bg:#111318;--card:#1a1d24;--fg:#e8eaed;--mute:#9aa0a6;--accent:#60a5fa;--line:#2a2e37}}
-body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,sans-serif}
+/* Design tokens from Montage (wanteddev/montage-web, MIT): cool-neutral, blue, typography, radius, spacing */
+:root{--bg:#F7F7F8;--card:#FFFFFF;--fg:#171719;--fg2:rgba(46,47,51,.88);--mute:rgba(55,56,60,.61);--accent:#0066FF;--line:rgba(112,115,124,.22);--line2:rgba(112,115,124,.16);--track:rgba(112,115,124,.08);--radius:12px;
+ --font:"Wanted Sans Variable","Wanted Sans",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#0F0F10;--card:#1B1C1E;--fg:#F7F7F8;--fg2:rgba(194,196,200,.88);--mute:rgba(174,176,182,.61);--accent:#3385FF;--line:rgba(112,115,124,.22);--line2:rgba(112,115,124,.16);--track:rgba(112,115,124,.22)}}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:400 .9375rem/1.375rem var(--font);letter-spacing:.0096em;word-break:keep-all}
 .wrap{max-width:1200px;margin:0 auto}
-h1{font-size:20px;margin:0 0 8px}
-.headline{font-size:18px;line-height:1.5;margin:0 0 8px;max-width:62ch}
-.note{color:var(--mute);max-width:70ch;margin:0 0 16px;font-size:13px}
+h1{font-size:1.5rem;line-height:2rem;font-weight:700;letter-spacing:-.023em;margin:0 0 8px}
+.headline{font-size:1.125rem;line-height:1.625rem;font-weight:600;letter-spacing:-.002em;margin:0 0 8px;max-width:62ch}
+.note{color:var(--mute);max-width:70ch;margin:0 0 24px;font-size:.8125rem;line-height:1.125rem;letter-spacing:.0194em}
 main{display:grid;grid-auto-flow:dense;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
 @media (min-width:760px){.wide{grid-column:span 2}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;overflow:auto;min-width:0}
-.card h2{font-size:14px;font-weight:600;margin:0 0 12px;color:var(--mute)}
-.kpi{font-size:32px;font-weight:700}.kpi small{font-size:14px;color:var(--mute);margin-left:4px;font-weight:400}
-table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
-svg text{fill:var(--mute);font-size:10px}
-.hbar{display:grid;grid-template-columns:auto 1fr auto;gap:10px 12px;align-items:center;font-variant-numeric:tabular-nums}
-.hbar .track{height:16px;background:var(--line);border-radius:4px;overflow:hidden}
+.card{background:var(--card);border:1px solid var(--line2);border-radius:var(--radius);padding:20px;overflow:auto;min-width:0}
+.card h2{font-size:.875rem;line-height:1.25rem;font-weight:600;letter-spacing:.0145em;margin:0 0 16px;color:var(--fg2)}
+.kpi{font-size:1.75rem;line-height:2.375rem;font-weight:700;letter-spacing:-.0236em;font-variant-numeric:tabular-nums}.kpi small{font-size:.875rem;color:var(--mute);margin-left:4px;font-weight:400;letter-spacing:.0145em}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.875rem}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line2)}
+th{font-size:.75rem;font-weight:500;color:var(--mute);letter-spacing:.0252em}
+svg text{fill:var(--mute);font-size:11px}
+.hbar{display:grid;grid-template-columns:auto 1fr auto;gap:12px 12px;align-items:center;font-variant-numeric:tabular-nums}
+.hbar .track{height:16px;background:var(--track);border-radius:4px;overflow:hidden}
 .hbar .fill{height:100%;background:var(--accent);border-radius:4px}
-.hbar .val{text-align:right}
+.hbar .val{text-align:right;font-weight:500}
 </style></head><body><div class="wrap">
 <h1>OZ Healthcare Claims Dashboard</h1>
 <p class="headline" id="headline"></p>
