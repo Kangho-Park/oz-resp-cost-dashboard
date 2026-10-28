@@ -1,3 +1,6 @@
 data/
 dist/
 __pycache__/
+.env
+supabase/.temp/
+supabase/.branches/

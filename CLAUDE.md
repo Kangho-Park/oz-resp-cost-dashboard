@@ -1,20 +1,35 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # OZ Healthcare Claims Dashboard
 
-Static dashboard over a Google Sheet. `python build.py [--refresh]` -> `dist/index.html`.
+Dynamic dashboard: Google Sheet -> Supabase Postgres -> browser calls one RPC (`dashboard(p_from, p_to)`) and renders cards. Hosted as a static page on GitHub Pages.
 
-## Layout
-- `build.py` fetch tabs (cached in data/) -> run metrics -> render template. Sheet ID and tab gids are constants at the top.
-- `metrics/` one metric = one file (QUESTION, CHART, run(t)); copy `_template.py`.
-- `template.html` the whole page (HTML/CSS/JS). `data/`, `dist/` are generated and git-ignored.
+## Commands
+- `python load.py [--refresh]` replace Supabase tables from the sheet tabs (cached in `data/`; `--refresh` re-downloads). Run monthly.
+- `python apply_metrics.py` (re)create the metric SQL functions after editing `supabase/metrics/*.sql`.
+- `supabase db push` apply `supabase/migrations/` (schema, RLS, `resp()`, `dashboard()`). Never edit an applied migration; add a new one.
+- `python verify.py` compare SQL output with the original pandas metrics in `verify/` (regression oracle, runs on `data/*.csv`).
+- `python build.py` inject `SUPABASE_URL`/`SUPABASE_ANON_KEY` into `template.html` -> `dist/index.html`.
+- Env: `.env` (git-ignored, see `.env.example`). `SUPABASE_DB_URL` is a secret; the anon key is public.
+- Local DB testing needs Docker running; otherwise verify against the real Supabase project.
+
+## Architecture
+- `supabase/migrations/` raw tables (all text columns), RLS on with no policies, `metric_registry`, shared scope function `resp(p_from, p_to)` (outpatient 031 + main_sick J%, month range), and `dashboard()` which runs every registered metric and returns `[{id, question, chart, wide, data}]`.
+- `supabase/metrics/NN_name.sql` one metric = one file: `m_NN_name(p_from, p_to) returns jsonb` + upsert into `metric_registry`. Output shapes are the chart contract used by `template.html` (kpi `{value,unit}`, bar/line/hbar `{labels,values,suffix?}`, table `{columns,rows}`, headline `{text}`). Metrics are discovered by registry, not hard-coded in the page.
+- Security model: browser only holds the anon key. anon/authenticated have no table grants and no execute on `resp`/`m_*`; only `dashboard()` is executable (security definer). New functions/tables in `public` get anon grants by Supabase default, so every new function needs `revoke all ... from public, anon, authenticated`.
+- `template.html` the whole page (HTML/CSS/JS); POSTs `/rest/v1/rpc/dashboard` with the month filter, no client library.
+- `verify/` legacy pandas implementation of the same metrics; update it only if you want the oracle to cover a new metric.
 
 ## Rules
-- Add a metric = add one file in metrics/. Nothing else.
-- Read CSVs as text (dtype=str); cast explicitly (leading-zero codes).
+- Add a metric = add one SQL file in `supabase/metrics/` (copy an existing one), then `python apply_metrics.py`.
+- Read CSVs as text (dtype=str); cast explicitly in SQL (leading-zero codes).
 - Grow only when needed: >10 metrics -> subfolders; multiple pages -> pages/; template >500 lines -> assets/; this file long -> docs/.
 
 ## Status / decisions
-- Stage: interview done (2 rounds, 2026-10-21) -> next: metrics design
-- Next: propose metric list + page layout for approval, then build one metric at a time.
+- Stage: Supabase live (project hmpjutlepovgeaziomfj; schema+13 metrics applied, data loaded, verify.py 13/13 OK on 2026-10-28) -> next: GitHub repo variables + Pages deploy, then commit
+- Next: set GitHub vars SUPABASE_URL/SUPABASE_ANON_KEY and deploy. Monthly `load.py` needs SUPABASE_DB_URL in .env (not set yet; initial load was done via `supabase db query` chunks). Assistant defaults, not user-confirmed: public page (anon RPC, aggregates only) and SQL-side metrics with a month-range filter.
 
 ### User context
 Health-care data analyst. Question: do claim costs differ by hospital type / region / income amid reported wealth-gap concerns? Focus: infectious respiratory disease. Periodic internal reporting, updated monthly.

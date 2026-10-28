@@ -23,13 +23,17 @@ svg text{fill:var(--mute);font-size:11px}
 .hbar .track{height:16px;background:var(--track);border-radius:4px;overflow:hidden}
 .hbar .fill{height:100%;background:var(--accent);border-radius:4px}
 .hbar .val{text-align:right;font-weight:500}
+.filter{display:flex;gap:12px;align-items:center;margin:0 0 16px;font-size:.875rem;color:var(--fg2)}
+.filter input,.filter button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg)}
+.filter button{cursor:pointer}
 </style></head><body><div class="wrap">
 <h1>OZ Healthcare Claims Dashboard</h1>
 <p class="headline" id="headline"></p>
 <p class="note">외래(031) 호흡기(J코드) 명세서, 2024-01~2025-12, 연습용 데이터. 진료비는 명세서 1건당 총진료비의 중앙값입니다. 차이를 보여줄 뿐 원인을 설명하지 않으며 연령·성별은 보정하지 않았습니다. 보험료 5분위가 없는 환자는 소득 분석에서 제외했습니다.</p>
+<div class="filter"><label>기간 <input type="month" id="from"> ~ <input type="month" id="to"></label><button type="button" id="reset">전체</button></div>
 <main id="app"></main></div>
 <script>
-const METRICS = /*__METRICS__*/[];
+const CONFIG = /*__CONFIG__*/{};
 const fmt = n => Number(n).toLocaleString("ko-KR");
 
 // round tick values 0..top with top above the maximum
@@ -73,8 +77,29 @@ const R = {
   line: d => plot(d, true),
   hbar,
 };
-const head = METRICS.find(m => m.chart === "headline");
-if (head) document.getElementById("headline").textContent = head.data.text;
-document.getElementById("app").innerHTML = METRICS.filter(m => m.chart !== "headline").map(m =>
-  `<section class="card${m.wide ? " wide" : ""}"><h2>${m.question}</h2>${(R[m.chart] || (() => "unknown chart"))(m.data)}</section>`).join("");
+async function load() {
+  const app = document.getElementById("app");
+  const p = { p_from: document.getElementById("from").value || null, p_to: document.getElementById("to").value || null };
+  app.setAttribute("aria-busy", "true");
+  try {
+    const res = await fetch(`${CONFIG.url}/rest/v1/rpc/dashboard`, {
+      method: "POST",
+      headers: { apikey: CONFIG.key, Authorization: `Bearer ${CONFIG.key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    const METRICS = await res.json();
+    const head = METRICS.find(m => m.chart === "headline");
+    document.getElementById("headline").textContent = head ? head.data.text : "";
+    app.innerHTML = METRICS.filter(m => m.chart !== "headline").map(m =>
+      `<section class="card${m.wide ? " wide" : ""}"><h2>${m.question}</h2>${(R[m.chart] || (() => "unknown chart"))(m.data)}</section>`).join("");
+  } catch (e) {
+    app.innerHTML = `<section class="card wide"><h2>데이터를 불러오지 못했습니다</h2><p>${String(e.message).replace(/</g, "&lt;")}</p></section>`;
+  } finally {
+    app.removeAttribute("aria-busy");
+  }
+}
+document.getElementById("from").onchange = document.getElementById("to").onchange = load;
+document.getElementById("reset").onclick = () => { document.getElementById("from").value = document.getElementById("to").value = ""; load(); };
+load();
 </script></body></html>
